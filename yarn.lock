@@ -1294,7 +1294,7 @@
   resolved "https://registry.npm.taobao.org/@types/retry/download/@types/retry-0.12.0.tgz?cache=0&sync_timestamp=1596839932014&other_urls=https%3A%2F%2Fregistry.npm.taobao.org%2F%40types%2Fretry%2Fdownload%2F%40types%2Fretry-0.12.0.tgz#2b35eccfcee7d38cd72ad99232fbd58bffb3c84d"
   integrity sha1-KzXsz87n04zXKtmSMvvVi/+zyE0=
 
-"@types/uuid@^8.0.1":
+"@types/uuid@^8.3.0":
   version "8.3.0"
   resolved "https://registry.npm.taobao.org/@types/uuid/download/@types/uuid-8.3.0.tgz#215c231dff736d5ba92410e6d602050cce7e273f"
   integrity sha1-IVwjHf9zbVupJBDm1gIFDM5+Jz8=
