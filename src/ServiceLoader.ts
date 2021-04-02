@@ -1,93 +1,81 @@
 import EventEmitter, { EventEmitterOnOptions } from "./EventEmitter";
-import Messager, { Message } from "./Messager";
+import Messager, { RequestHandlers, ResponseHandlers } from "./Messager";
 
 interface LoaderOptions {
+  container?: HTMLElement;
   hidden?: boolean;
-  timeout?: number;
-  ignoreTimeout?: boolean;
-}
-
-interface MessageHandlers {
-  [key: string]: (msg: Message) => Error | { [key: string]: any } | undefined;
+  initTimeout?: number;
+  requestHandlers?: RequestHandlers;
+  responseHandlers?: ResponseHandlers;
 }
 
 export default class ServiceLoader extends EventEmitter {
-  container: HTMLElement;
-  iframe: HTMLIFrameElement;
-  iframeLoadTimeout: number = 5000;
-  messager: Messager;
-  pending: Promise<any>;
-  selfEvents = ["loading", "load", "init", "error"];
+  private container: HTMLElement;
+  private iframe: HTMLIFrameElement;
+  private initTimeout?: number;
+  private messager: Messager;
+  private pending: Promise<any>;
+  private selfEvents = ["loading", "load", "init", "error"];
 
-  constructor(
-    url: string,
-    container: HTMLElement = document.body,
-    options: LoaderOptions = {},
-    messageHandlers: MessageHandlers = {}
-  ) {
+  constructor(url: string, options: LoaderOptions = {}) {
     super();
 
-    this.container = container;
-    if (options.timeout) {
-      this.iframeLoadTimeout = options.timeout;
-    }
-    if (messageHandlers) {
-      this.on("init", (messager) => Object.assign(messager, messageHandlers), {
-        once: true,
-      });
-    }
-
+    this.container = options.container || document.body;
+    this.initTimeout = options.initTimeout;
     this.iframe = document.createElement("iframe");
-    this.iframe.style.width = "100%";
-    this.iframe.style.height = "100%";
-    this.iframe.style.border = "none";
     this.iframe.src = url;
-    // this.iframe.hidden = true;
+
+    this.on(
+      "init",
+      (messager: Messager) => {
+        if (options.requestHandlers) {
+          messager.registerRequestHandlers(options.requestHandlers);
+        }
+        if (options.responseHandlers) {
+          messager.registerResponseHandlers(options.responseHandlers);
+        }
+      },
+      { once: true }
+    );
 
     if (options.hidden) {
-      this.container.appendChild(this.iframe);
+      this.iframe.hidden = true;
     } else {
-      this.container.appendChild(this.iframe);
+      this.iframe.style.width = "100%";
+      this.iframe.style.height = "100%";
+      this.iframe.style.border = "none";
       setTimeout(() => {
         super.emit("loading", this.container);
       }, 0);
     }
 
+    this.container.appendChild(this.iframe);
     this.messager = new Messager(this.iframe.contentWindow as Window);
-
     this.messager.on("close", () => this.container.removeChild(this.iframe), {
       once: true,
     });
 
-    const initPromise = new Promise<any>((resolve, reject) => {
+    const initPromise = new Promise<void>((resolve, reject) => {
       this.messager.on(
         "load",
         () => {
-          this.messager
-            .postMessage({ type: "init" }, { ignoreOrigin: true })
-            .then(resolve, reject)
-            .then(() => {
-              this.iframe.hidden = false;
-              super.emit("load", this.container);
-              super.emit("init", this.messager);
-            });
+          super.emit("load", this.container);
+          this.messager.postMessage({ type: "init" }).then(() => {
+            super.emit("init", this.messager);
+            resolve();
+          }, reject);
         },
         { once: true }
       );
     });
 
-    if (options.ignoreTimeout) {
+    if (!options.initTimeout) {
       this.pending = initPromise;
     } else {
       const timeoutPromise = new Promise((resolve, reject) => {
         setTimeout(
-          () =>
-            reject(
-              new ServiceLoaderIFrameError(
-                `iframe 加载超时, url: ${url}, timeout: ${this.iframeLoadTimeout}`
-              )
-            ),
-          this.iframeLoadTimeout
+          () => reject(new ServiceLoaderIFrameError("init timeout")),
+          this.initTimeout
         );
       });
       this.pending = Promise.race([initPromise, timeoutPromise]);
@@ -104,10 +92,7 @@ export default class ServiceLoader extends EventEmitter {
     } else {
       return this.pending.then(() => {
         return this.messager
-          .postMessage(
-            { type: "close", data, event: true },
-            { ignoreOrigin: true }
-          )
+          .postMessage({ type: "close", data, event: true })
           .then(() => {
             this.container.removeChild(this.iframe);
           });
@@ -117,10 +102,7 @@ export default class ServiceLoader extends EventEmitter {
 
   emit(event: string, data?: any) {
     return this.pending.then(() => {
-      return this.messager.postMessage(
-        { type: event, data, event: true },
-        { ignoreOrigin: true }
-      );
+      return this.messager.postMessage({ type: event, data, event: true });
     });
   }
 
@@ -129,31 +111,24 @@ export default class ServiceLoader extends EventEmitter {
     handler: (...args: any[]) => any,
     options?: EventEmitterOnOptions
   ) {
-    if (this.selfEvents.includes(event)) {
+    if (this.selfEvents.indexOf(event) !== -1) {
       super.on(event, handler, options);
     } else {
-      this.pending.then(() => {
-        this.messager.on(event, handler, options);
-      });
+      this.messager.on(event, handler, options);
     }
   }
 
   off(event: string, handler: (...args: any[]) => any) {
-    if (this.selfEvents.includes(event)) {
+    if (this.selfEvents.indexOf(event) !== -1) {
       super.off(event, handler);
     } else {
-      this.pending.then(() => {
-        this.messager.off(event, handler);
-      });
+      this.messager.off(event, handler);
     }
   }
 
   postMessage(type: string, data?: any, transfer?: Transferable[]) {
     return this.pending.then(() =>
-      this.messager.postMessage(
-        { type, data, transfer },
-        { ignoreOrigin: true }
-      )
+      this.messager.postMessage({ type, data, transfer })
     );
   }
 }

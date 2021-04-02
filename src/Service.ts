@@ -1,17 +1,21 @@
 import Messager, { Message } from "./Messager";
 
 export default class Service extends Messager {
-  constructor(peer: Window = window.parent, acl?: string[]) {
-    super(peer, acl);
+  constructor(acl?: string[]) {
+    super(parent, acl);
 
-    if (peer === window) return;
+    if (parent === window) return;
 
-    this.postMessage({ type: "load", event: true }, { ignoreOrigin: true });
-  }
+    this.registerRequestHandlers({
+      key: "_inner",
+      handlers: {
+        init(this: Service, msg: Message, event: MessageEvent) {
+          this.setPeerOrigin(event.origin);
+          this.localEmit("init");
+        },
+      },
+    });
 
-  // init
-  init(msg: Message, event: MessageEvent) {
-    this.peerOrigin = event.origin;
-    super.emit("init");
+    this.postMessage({ type: "load", event: true });
   }
 }

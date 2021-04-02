@@ -228,4 +228,3 @@ types/**/*.d.ts
 # Custom Build Files
 /es
 /umd
-/stats.html

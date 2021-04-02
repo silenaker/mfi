@@ -4,7 +4,7 @@ module.exports = {
   configureWebpack: {
     resolve: {
       alias: {
-        "mfi": path.join(__dirname, "../../dist/index.js")
+        "mfei": path.join(__dirname, "../../es/index.js")
       }
     }
   }

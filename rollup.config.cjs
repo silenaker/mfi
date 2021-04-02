@@ -4,14 +4,12 @@ const pkg = require("./package.json");
 const dev = process.env.NODE_ENV === "development";
 
 // plugins
-const typescriptPlugin = require("@rollup/plugin-typescript");
-const nodeResolvePlugin = require("@rollup/plugin-node-resolve").default;
 const commonjsPlugin = require("@rollup/plugin-commonjs");
+const nodeResolvePlugin = require("@rollup/plugin-node-resolve").default;
+const typescriptPlugin = require("@rollup/plugin-typescript");
 const replacePlugin = require("@rollup/plugin-replace");
-// const babelPlugin = require("@rollup/plugin-babel").default;
 const uglifyPlugin = require("rollup-plugin-uglify").uglify;
 const bannerPlugin = require("rollup-plugin-banner").default;
-const visualizerPlugin = require("rollup-plugin-visualizer");
 
 const releaseInfoTemplate =
   "Name: {{name}}\nVersion: {{version}}\nCommit: {{commit}}\nRelease Date: {{date}}";
@@ -23,31 +21,20 @@ const formatTemplate = (data, template) =>
 
 const revision = child_process.execSync("git rev-parse HEAD");
 
-// babel polyfill are too large, we use typescript plugin directly
 module.exports = {
   input: "src/index.ts",
   output: {
-    name: "mfi",
-    file: dev ? "umd/mfi.js" : "umd/mfi.min.js",
+    name: "mfei",
+    file: dev ? "umd/mfei.js" : "umd/mfei.min.js",
     format: "umd",
   },
   plugins: [
-    typescriptPlugin(),
-    nodeResolvePlugin({
-      // use with babel plugin
-      // extensions: [".mjs", ".js", ".jsx", ".json", ".ts"],
-      browser: true,
-    }),
     commonjsPlugin(),
+    nodeResolvePlugin({ browser: true }),
+    typescriptPlugin(),
     replacePlugin({
       "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV),
     }),
-    // babelPlugin({
-    //   rootMode: "upward",
-    //   babelHelpers: "bundled",
-    //   extensions: [".ts"],
-    //   include: ["src/**/*.ts"],
-    // }),
     !dev && uglifyPlugin(),
     bannerPlugin(
       formatTemplate(
@@ -60,6 +47,5 @@ module.exports = {
         releaseInfoTemplate
       )
     ),
-    dev && visualizerPlugin(),
   ],
 };

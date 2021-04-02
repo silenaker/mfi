@@ -11,14 +11,17 @@ export default class EventEmitter {
     options?: EventEmitterOnOptions
   ) {
     this.eventHandles[event] = this.eventHandles[event] || [];
-    if (this.eventHandles[event].includes(handle)) return;
+    if (this.eventHandles[event].indexOf(handle) !== -1) return;
     // @ts-ignore
     handle.__event_emitter_on_options = options;
     this.eventHandles[event].push(handle);
   }
 
   off(event: string, handle: (...args: any[]) => any) {
-    if (this.eventHandles[event] && this.eventHandles[event].includes(handle)) {
+    if (
+      this.eventHandles[event] &&
+      this.eventHandles[event].indexOf(handle) !== -1
+    ) {
       const index = this.eventHandles[event].indexOf(handle);
       this.eventHandles[event].splice(index, 1);
     }

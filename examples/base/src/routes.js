@@ -8,7 +8,7 @@ export default [
   {
     path: "/mango",
     meta: {
-      url: "https://www.so.com"
+      url: "https://caniuse.com/"
     }
   }
 ];
